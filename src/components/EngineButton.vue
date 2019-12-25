@@ -1,45 +1,50 @@
 <template>
   <div class="engineBtn">
     <el-button
-      v-bind:class="activeClass"
-      class="baiduBtn"
+      v-bind:class="[engine, 'btnBase', { inactive: inactive }]"
       @click="switchTranslator"
       circle
     ></el-button>
   </div>
 </template>
 
-<script>
-import WindowController from "./WindowController";
-import { MessageType, WinOpt } from "../tools/enums";
-import { ipcRenderer as ipc } from "electron";
-const _ = import("lodash");
+<script lang="ts">
+import WindowController from "./WindowController.vue";
+import Vue from "vue";
+import Component, { mixins } from "vue-class-component";
 
-export default {
-  name: "EngineButton",
-  mixins: [WindowController],
-  props: ["engine", "idx"],
-  data: function() {
-    return {
-      activeClass: ["btnBase"]
-    };
-  },
-  computed: {},
-  methods: {
-    switchTranslator() {
-      this.callback("translatorType|" + this.idx.toString());
-    }
-  },
-  mounted: function() {
-    this.activeClass.push(this.engine);
+const AppProps = Vue.extend({
+  props: {
+    engine: String,
+    valid: Boolean
   }
-};
+});
+
+@Component
+export default class App extends mixins(WindowController, AppProps) {
+  engineClass: string = this.engine;
+  get inactive() {
+    return this.valid
+      ? this.$store.state.dictResult.engine != this.engine
+      : this.$store.state.sharedResult.engine != this.engine;
+  }
+  switchTranslator() {
+    if (this.valid) {
+      this.callback("dictionaryType|" + this.engine);
+    } else {
+      this.callback("translatorType|" + this.engine);
+    }
+  }
+}
 </script>
 
 <style scoped>
 .engineBtn {
   width: 100%;
   height: 100%;
+}
+.inactive {
+  filter: grayscale(90%);
 }
 .baidu {
   background-image: url("../images/baidu.svg");
@@ -55,6 +60,12 @@ export default {
 }
 .youdao {
   background-image: url("../images/youdao.png");
+}
+.bing {
+  background-image: url("../images/bing.png");
+}
+.tencent {
+  background-image: url("../images/tencent.png");
 }
 .btnBase {
   background-position: center;

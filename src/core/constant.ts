@@ -1,15 +1,32 @@
-import * as _ from "lodash";
 export const constants = {
   appName: "CopyTranslator",
-  nickName: "Zouwu",
-  version: "v8.5.0",
-  stage: "alpha",
+  nickName: "寒渐",
+  version: "9.0.1",
+  stage: "",
   wiki: "https://copytranslator.github.io/guide",
   homepage: "https://copytranslator.github.io",
   downloadPage:
     "https://copytranslator.github.io/guide/download.html#%E4%B8%8B%E8%BD%BD"
 };
-export const version = _.join(
-  [constants.version, constants.nickName, constants.stage],
-  " "
-);
+export const versionString = [
+  "v" + constants.version,
+  constants.nickName,
+  constants.stage
+].join(" ");
+
+export const version = constants.version;
+
+export function compatible(configVersion: string): boolean {
+  try {
+    const configInfos = configVersion.substring(1).split(".");
+    const currentInfos = version.substring(1).split(".");
+    for (const i of [0, 1]) {
+      if (currentInfos[i] !== configInfos[i]) {
+        return false;
+      }
+    }
+    return true;
+  } catch (e) {
+    return false;
+  }
+}

@@ -1,13 +1,11 @@
-import { ruleKeys } from "../tools/rule";
 import { dialog, BrowserWindow, MenuItem, nativeImage, shell } from "electron";
-import { envConfig } from "../tools/envConfig";
+import { env } from "../tools/env";
 import { checkForUpdates } from "../tools/views/update";
-import { constants, version } from "../core/constant";
-import { Controller } from "../core/controller";
+import { constants, versionString } from "../core/constant";
 import { decompose } from "../tools/action";
 import { showSettings } from "../tools/views";
+import { Identifier, NormalActionType, RouteActionType } from "../tools/types";
 
-import * as _ from "lodash";
 const clipboard = require("electron-clipboard-extended");
 
 function handleActions(
@@ -17,47 +15,48 @@ function handleActions(
   event: Event | undefined = undefined
 ) {
   const params = decompose(id);
-  id = params[0];
+  const identifier = <Identifier>params[0];
   const param = params[1];
-  if (ruleKeys.includes(id)) {
-    const controller = <Controller>(<any>global).controller;
-    if (param) {
-      //设置 枚举值的 action
-      const intVal = parseInt(param);
-      controller.setByKeyValue(id, Number.isNaN(intVal) ? param : intVal);
-      return;
-    }
-    if (menuItem) {
-      // 设置切换按钮的值
-      if ((<any>menuItem).type === "submenu") {
-        return;
+  const controller = global.controller;
+  const action = controller.action.getAction(identifier);
+  const intVal = parseInt(param);
+  switch (action.actionType) {
+    case "normal":
+      handleNormalAction(<NormalActionType | RouteActionType>identifier);
+      break;
+    case "submenu":
+    case "constant":
+      controller.set(identifier, Number.isNaN(intVal) ? param : intVal);
+      break;
+    case "checkbox":
+      if (menuItem) {
+        // 设置切换按钮的值
+        if ((<any>menuItem).type === "submenu") {
+          return;
+        }
+        controller.set(identifier, menuItem.checked);
+      } else {
+        controller.switchValue(identifier);
       }
-      controller.setByKeyValue(id, menuItem.checked);
-    } else {
-      controller.switchValue(id);
-    }
-  } else {
-    //处理普通动作
-    handleNormalAction(id);
+      break;
   }
 }
 
-function handleNormalAction(actionId: string) {
-  const controller = <Controller>(<any>global).controller;
+function handleNormalAction(identifier: NormalActionType | RouteActionType) {
+  const controller = global.controller;
   const t = controller.getT();
-  switch (actionId) {
-    case "contrastMode":
-      controller.win.routeTo("Contrast");
+  switch (identifier) {
+    case "contrast":
+      controller.win.routeTo("contrast");
       break;
-    case "focusMode":
-      controller.win.routeTo("Focus");
+    case "focus":
+      controller.win.routeTo("focus");
       break;
-    case "quit":
     case "exit":
       controller.onExit();
       break;
     case "capture":
-      controller.capture();
+      (<any>global).shortcutCapture.shortcutCapture();
       break;
     case "clear":
       controller.clear();
@@ -72,17 +71,17 @@ function handleNormalAction(actionId: string) {
       showSettings();
       break;
     case "helpAndUpdate":
-      dialog.showMessageBox(
-        <BrowserWindow>controller.win.window,
-        {
-          title: constants.appName + " " + version,
+      dialog
+        .showMessageBox(<BrowserWindow>controller.win.window, {
+          title: constants.appName + " " + versionString,
           message:
             "If you found it useful, please give me a star on GitHub or introduce to your friend.\n如果您感觉本软件对您有所帮助，请在项目Github上给个star或是介绍给您的朋友，谢谢。\n本软件免费开源，如果您是以付费的方式获得本软件，那么你应该是被骗了。[○･｀Д´･ ○]",
           buttons: [t("homepage"), t("userManual"), t("checkUpdate"), "cancel"],
           cancelId: 3,
-          icon: nativeImage.createFromPath(envConfig.iconPath)
-        },
-        function(response, checkboxChecked) {
+          icon: nativeImage.createFromPath(env.iconPath)
+        })
+        .then(res => res.response)
+        .then(response => {
           switch (response) {
             case 0:
               shell.openExternal(constants.homepage);
@@ -94,8 +93,7 @@ function handleNormalAction(actionId: string) {
               checkForUpdates();
               break;
           }
-        }
-      );
+        });
       break;
     case "retryTranslate":
       controller.doTranslate(controller.src);

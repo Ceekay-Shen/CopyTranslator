@@ -1,15 +1,8 @@
-import {
-  BrowserWindow,
-  Rectangle,
-  screen,
-  nativeImage,
-  remote
-} from "electron";
+import { BrowserWindow, screen, nativeImage } from "electron";
 import { createProtocol } from "vue-cli-plugin-electron-builder/lib";
-import { envConfig } from "../envConfig";
-import { RouteName } from "../action";
-import { Controller } from "../../core/controller";
+import { env } from "../env";
 import { loadStyles } from "../style";
+import { RouteActionType } from "../types";
 
 export function insertStyles(window: BrowserWindow) {
   window.webContents.on("did-finish-load", function() {
@@ -19,27 +12,27 @@ export function insertStyles(window: BrowserWindow) {
 
 export function loadRoute(
   window: BrowserWindow,
-  routeName: RouteName,
+  routeName: RouteActionType,
   main: boolean = false
 ) {
   if (process.env.WEBPACK_DEV_SERVER_URL) {
     // Load the url of the dev server if in development mode
-    window.loadURL(envConfig.publicUrl + `/#/${routeName}`);
+    window.loadURL(env.publicUrl + `/#/${routeName}`);
     if (!process.env.IS_TEST && main) window.webContents.openDevTools();
   } else {
     // Load the index.html when not in development
     if (main) {
       createProtocol("app");
     }
-    const url = `${envConfig.publicUrl}/index.html#${routeName}`;
+    const url = `${env.publicUrl}/index.html#${routeName}`;
     window.loadURL(url);
   }
 }
 
 export function showSettings() {
   const width = 320,
-    height = 640;
-  const controller = <Controller>(<any>global).controller;
+    height = 680;
+  const controller = global.controller;
   const current_win = controller.win;
   const bound = current_win.getBound();
   const {
@@ -54,15 +47,17 @@ export function showSettings() {
     y: yBound + (screenHeight - height) / 2,
     width: width,
     height: height,
-    // titleBarStyle: "hiddenInset",
     autoHideMenuBar: true,
     maximizable: false,
     minimizable: false,
     title: t("settings"),
     parent: current_win.window,
     show: true,
-    icon: nativeImage.createFromPath(envConfig.iconPath)
+    icon: nativeImage.createFromPath(env.iconPath),
+    webPreferences: {
+      nodeIntegration: true
+    }
   });
-  loadRoute(window, RouteName.Settings);
+  loadRoute(window, "settings");
   insertStyles(window);
 }

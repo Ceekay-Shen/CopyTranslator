@@ -1,22 +1,13 @@
-import {
-  app,
-  BrowserWindow,
-  Rectangle,
-  screen,
-  nativeImage,
-  TouchBarSlider,
-  Menu
-} from "electron";
+import { BrowserWindow, Rectangle, screen, nativeImage } from "electron";
 import { ColorStatus, HideDirection, MessageType, WinOpt } from "../enums";
-import { ModeConfig, RuleName } from "../rule";
-import { envConfig } from "../envConfig";
-import { RouteName } from "../action";
-import { Controller } from "../../core/controller";
+import { ModeConfig } from "../rule";
+import { env } from "../env";
 import { loadRoute, insertStyles } from ".";
+import { RouteActionType } from "../types";
 
 export class WindowWrapper {
   window: BrowserWindow | undefined = undefined;
-  stored: string = RouteName.Focus;
+  stored: RouteActionType = "focus";
 
   sendMsg(type: string, msg: any) {
     if (this.window) this.window.webContents.send(type, msg);
@@ -33,28 +24,26 @@ export class WindowWrapper {
     this.winOpt(WinOpt.ChangeColor, color);
   }
 
-  routeTo(routeName: string) {
+  routeTo(routeName: RouteActionType) {
     if (this.window) {
       this.window.focus();
       this.window.webContents.send(MessageType.Router.toString(), routeName);
-      (<Controller>(<any>global).controller).setByKeyValue(
-        "frameMode",
-        routeName
-      );
+      global.controller.set("frameMode", routeName);
     }
   }
 
-  load(routerName: RouteName = RouteName.Focus) {
-    if (!this.window) return;
+  load(routerName: RouteActionType = "focus") {
+    if (!this.window) {
+      return;
+    }
     this.winOpt(WinOpt.SaveMode);
     loadRoute(this.window, routerName, true);
     insertStyles(this.window);
-    const that = this;
     this.window.on("blur", () => {
-      that.edgeHide(that.onEdge());
+      this.edgeHide(this.onEdge());
     });
     this.window.on("focus", () => {
-      that.edgeShow();
+      this.edgeShow();
     });
   }
 
@@ -63,10 +52,9 @@ export class WindowWrapper {
       this.window.setBounds(bounds);
     }
   }
-
-  onEdge() {
-    if (!(<Controller>(<any>global).controller).get(RuleName.autoHide)) {
-      return HideDirection.None;
+  onEdge(): HideDirection {
+    if (!global.controller.get("autoHide")) {
+      return "None";
     }
     let { x, y, width } = this.getBound();
     const { x: xBound, width: screenWidth } = screen.getDisplayMatching(
@@ -75,12 +63,12 @@ export class WindowWrapper {
     x -= xBound;
     let xEnd = x + width;
 
-    if (x <= 0) return HideDirection.Left;
+    if (x <= 0) return "Left";
     if (xEnd >= screenWidth) {
-      return HideDirection.Right;
+      return "Right";
     }
-    if (y <= 0) return HideDirection.Up;
-    return HideDirection.None;
+    if (y <= 0) return "Up";
+    return "None";
   }
 
   edgeHide(hideDirection: HideDirection) {
@@ -92,27 +80,27 @@ export class WindowWrapper {
     let xEnd = x + width;
     let yEnd = y + height;
     switch (hideDirection) {
-      case HideDirection.Up:
+      case "Up":
         if (yEnd > 10) {
           y -= yEnd - 10;
           yEnd -= yEnd - 10;
           this.setBounds({ x: x, y: y, width: width, height: height });
         }
         break;
-      case HideDirection.Left:
+      case "Left":
         if (xEnd > xBound + 10) {
           x -= xEnd - (xBound + 10);
           xEnd -= xEnd - (xBound + 10);
           this.setBounds({ x: x, y: y, width: width, height: height });
         }
         break;
-      case HideDirection.Right:
+      case "Right":
         if (x < xBound + screenWidth - 10) {
           x += xBound + screenWidth - 10 - x;
           this.setBounds({ x: x, y: y, width: width, height: height });
         }
         break;
-      case HideDirection.Minify:
+      case "Minify":
         if (this.window) {
           this.window.minimize();
         }
@@ -162,23 +150,25 @@ export class WindowWrapper {
     }
   }
 
-  createWindow(routeName: RouteName) {
+  createWindow(routeName: RouteActionType) {
     let param: ModeConfig | undefined;
-    const controller = <Controller>(<any>global).controller;
+    const controller = global.controller;
     switch (routeName) {
-      case RouteName.Focus:
-        param = controller.get(RuleName.focus);
+      case "focus":
+        param = controller.get("focus");
         break;
-      case RouteName.Contrast:
-        param = controller.get(RuleName.contrast);
+      case "contrast":
+        param = controller.get("contrast");
         break;
-      case RouteName.Settings:
-        param = controller.get(RuleName.settingsConfig);
-        break;
-      default:
+      case "settings":
+        param = controller.get("settings");
         break;
     }
-    if (!param) return;
+
+    if (!param) {
+      throw Error("not implement window type");
+    }
+
     // Create the browser window.
     this.window = new BrowserWindow({
       x: param.x,
@@ -186,13 +176,25 @@ export class WindowWrapper {
       autoHideMenuBar: true,
       width: param.width,
       height: param.height,
-      icon: nativeImage.createFromPath(envConfig.iconPath)
+      icon: nativeImage.createFromPath(env.iconPath),
+      webPreferences: {
+        nodeIntegration: true
+      }
     });
     this.load(routeName);
+    this.window.on("close", e => {
+      const closeAsQuit = global.controller.get("closeAsQuit");
+      if (!global.controller.exited && !closeAsQuit) {
+        e.preventDefault();
+        if (this.window) {
+          this.window.minimize();
+        }
+      }
+    });
     this.window.on("closed", () => {
       this.window = undefined;
     });
-    this.setSkipTaskbar(controller.get(RuleName.skipTaskbar));
+    this.setSkipTaskbar(controller.get("skipTaskbar"));
   }
 
   setSkipTaskbar(value: boolean) {
@@ -217,9 +219,14 @@ export class WindowWrapper {
   restore(param: ModeConfig) {
     if (this.window) {
       this.window.setBounds(Object.assign(this.getBound(), param));
-      this.window.setAlwaysOnTop(
-        (<Controller>(<any>global).controller).get(RuleName.stayTop)
-      );
+      this.window.setAlwaysOnTop(global.controller.get("stayTop"));
     }
+  }
+
+  storeWindow(routeName: RouteActionType, fontSize: number) {
+    global.controller.set(routeName, {
+      ...this.getBound(),
+      fontSize
+    });
   }
 }

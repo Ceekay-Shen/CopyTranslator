@@ -1,6 +1,5 @@
-import { envConfig } from "./envConfig";
-
-var fs = require("fs");
+import { env } from "./env";
+import fs from "fs";
 
 const defaultStyles = `
 .application{ /*在这里设置整个应用的字体*/
@@ -21,17 +20,22 @@ const defaultStyles = `
     /*modify the style of the contrast mode panel*/
 }
 `;
+
 let loadedStyles: undefined | string;
+
+export function resetStyle() {
+  fs.writeFileSync(env.style, defaultStyles);
+}
 
 function loadStyles(): string {
   if (loadedStyles) {
     return loadedStyles;
   }
   try {
-    loadedStyles = <string>fs.readFileSync(envConfig.style, "utf-8").toString();
+    loadedStyles = <string>fs.readFileSync(env.style, "utf-8").toString();
     return loadedStyles;
   } catch (e) {
-    fs.writeFileSync(envConfig.style, defaultStyles);
+    resetStyle();
     loadedStyles = defaultStyles;
     return defaultStyles;
   }

@@ -15,38 +15,39 @@
   </div>
 </template>
 
-<script>
-import { RuleName } from "../tools/rule";
-import WindowController from "../components/WindowController";
+<script lang="ts">
+import WindowController from "../components/WindowController.vue";
 import { shell } from "electron";
+import { Component } from "vue-property-decorator";
 
-export default {
-  name: "OCRConfig",
-  mixins: [WindowController],
-  data() {
-    return {
-      APP_ID: this.$controller.get(RuleName.APP_ID),
-      API_KEY: this.$controller.get(RuleName.API_KEY),
-      SECRET_KEY: this.$controller.get(RuleName.SECRET_KEY)
-    };
-  },
-  methods: {
-    confirm() {
-      this.$controller.setUpRecognizer(
-        this.APP_ID,
-        this.API_KEY,
-        this.SECRET_KEY
-      );
-      this.closeMe();
-    },
-    close() {
-      this.closeMe();
-    },
-    tutorial() {
-      shell.openExternal("https://www.bilibili.com/video/av53888416/");
-    }
+@Component
+export default class OCRConfig extends WindowController {
+  APP_ID: string = "";
+  API_KEY: string = "";
+  SECRET_KEY: string = "";
+
+  mounted() {
+    this.$proxy.get("APP_ID").then(res => {
+      this.APP_ID = res;
+    });
+    this.$proxy.get("API_KEY").then(res => {
+      this.API_KEY = res;
+    });
+    this.$proxy.get("SECRET_KEY").then(res => {
+      this.SECRET_KEY = res;
+    });
   }
-};
+  confirm() {
+    this.$proxy.setUpRecognizer(this.APP_ID, this.API_KEY, this.SECRET_KEY);
+    this.closeMe();
+  }
+  close() {
+    this.closeMe();
+  }
+  tutorial() {
+    shell.openExternal("https://www.bilibili.com/video/av53888416/");
+  }
+}
 </script>
 
 <style scoped></style>

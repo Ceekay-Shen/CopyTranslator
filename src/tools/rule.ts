@@ -1,63 +1,15 @@
-import { en } from "./locales";
-import { roles, RouteName } from "./action";
-import { Controller } from "../core/controller";
-import * as _ from "lodash";
-//前面三个是不能交换顺序的，会出问题
-enum RuleName {
-  autoCopy = 1,
-  incrementalCopy = 2,
-  autoPaste = 4,
-  listenClipboard,
-  detectLanguage,
-  stayTop,
-  smartTranslate,
-  smartDict,
-  autoHide,
-  autoFormat,
-  autoShow,
-  tapCopy,
-  enableNotify,
-  autoPurify,
-  skipTaskbar,
-  //enum rule
-  frameMode,
-  translatorType,
-  hideDirect,
-  // mode config
-  focus,
-  contrast,
-  settingsConfig,
-  //groups
-  contrastMenu,
-  focusMenu,
-  trayMenu,
-  contrastOption,
-  //
-  sourceLanguage,
-  targetLanguage,
-  localeSetting,
-  notices,
-  //以下为用户手动设置常量
-  APP_ID,
-  API_KEY,
-  SECRET_KEY
+import { Identifier } from "./types";
+
+export const colorRules = new Map<Identifier, number>([
+  ["autoCopy", 1],
+  ["incrementalCopy", 2],
+  ["autoPaste", 4]
+]);
+
+export function getColorRule(key: Identifier) {
+  return <number>colorRules.get(key);
 }
-
-export const colorRules: RuleName[] = [
-  RuleName.autoCopy,
-  RuleName.incrementalCopy,
-  RuleName.autoPaste
-];
-//是数字列表
-const ruleValues: Array<number> = Object.values(RuleName).filter(
-  k => (typeof k as any) == "number"
-);
-
-const reverseRuleName = _.keyBy(ruleValues, function(o: number) {
-  return RuleName[o];
-});
-
-const ruleKeys = Object.keys(reverseRuleName);
+type CheckFuction = (value: any) => boolean;
 
 interface ModeConfig {
   x: number;
@@ -66,85 +18,73 @@ interface ModeConfig {
   width: number;
   fontSize?: number;
 }
-
-class GroupRule implements Rule {
-  predefined: Array<string>;
-  msg: string;
-  // check(value: any) {
-  //   if (!(value instanceof Array)) {
-  //     return false;
-  //   }
-  //   for (const key in value) {
-  //     if (!_.includes(this.predefined, key)) {
-  //       return false;
-  //     }
-  //   }
-  //   return true;
-  //   //TODO fix this in next version
-  // }
-  constructor(predefined: Array<string>, msg: string) {
-    this.predefined = predefined;
-    this.msg = msg;
-  }
-}
-
-type CheckFuction = (value: any) => boolean;
-
 interface Rule {
   predefined: any;
   msg: string;
   check?: CheckFuction; // 检查是否有效的函数
 }
 
-class BoolRule implements Rule {
-  predefined: boolean;
+class GroupRule<T> implements Rule {
+  predefined: Array<T>;
   msg: string;
-  constructor(predefined: boolean, msg: string) {
+  check: CheckFuction;
+  constructor(predefined: Array<T>, msg: string, options: readonly T[]) {
     this.predefined = predefined;
     this.msg = msg;
+    this.check = (value: Array<T>) => {
+      value.forEach(item => {
+        if (!options.includes(item)) {
+          return false;
+        }
+        return true;
+      });
+      return true;
+    };
   }
 }
 
-class StringRule implements Rule {
-  predefined: string;
+export class UnionRule<T> implements Rule {
+  predefined: any;
   msg: string;
-  constructor(predefined: string, msg: string) {
+  check: CheckFuction;
+  constructor(predefined: T, msg: string, options: readonly T[]) {
     this.predefined = predefined;
     this.msg = msg;
+    this.check = function(value: T) {
+      return options.includes(value);
+    };
   }
 }
-
-class NumberRule implements Rule {
-  predefined: number;
+class TypeRule<T> implements Rule {
+  predefined: T;
   msg: string;
   check?: CheckFuction;
 
-  constructor(predefined: number, msg: string, check?: CheckFuction) {
+  constructor(predefined: T, msg: string, check?: CheckFuction) {
     this.predefined = predefined;
     this.msg = msg;
-    if (check) {
-      this.check = check;
-    } else {
-      this.check = function(value) {
-        return typeof value == "number";
-      };
-    }
+    this.check = function(value) {
+      let result: boolean = typeof value === typeof predefined;
+      if (result && check) {
+        result = result && check(value);
+      }
+      return result;
+    };
   }
 }
-
-class ModeRule implements Rule {
-  predefined: ModeConfig;
+class StructRule<T extends { [key: string]: any }> implements Rule {
+  predefined: T;
   msg: string;
   check: CheckFuction;
 
-  constructor(predefined: ModeConfig, msg: string) {
+  constructor(predefined: T, msg: string) {
     this.predefined = predefined;
     this.msg = msg;
-    this.check = function(value: any) {
-      for (let key in predefined) {
+    this.check = function(value: T) {
+      for (const key of Object.keys(predefined)) {
         if (
           !value.hasOwnProperty(key) ||
-          typeof value[key] !== typeof (<any>predefined)[key]
+          typeof value[key] !== typeof predefined[key]
         ) {
           return false;
         }
@@ -154,33 +94,4 @@ class ModeRule implements Rule {
   }
 }
 
-export class EnumRule implements Rule {
-  predefined: any;
-  msg: string;
-  check: CheckFuction;
-
-  constructor(predefined: any, msg: string, type: any) {
-    this.predefined = predefined;
-    this.msg = msg;
-    this.check = function(value: any) {
-      return _.includes(
-        Object.values(type).filter(k => (typeof k as any) == "number"),
-        value
-      );
-    };
-  }
-}
-
-export {
-  Rule,
-  NumberRule,
-  ModeRule,
-  BoolRule,
-  CheckFuction,
-  RuleName,
-  reverseRuleName,
-  ruleKeys,
-  ModeConfig,
-  GroupRule,
-  StringRule
-};
+export { Rule, TypeRule, StructRule, CheckFuction, ModeConfig, GroupRule };

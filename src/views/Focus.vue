@@ -6,7 +6,7 @@
       @keyup.ctrl.13="shortcut"
       @keyup.ctrl.71="google"
       @keyup.ctrl.66="baidu"
-      v-on:contextmenu="openMenu('FocusText')"
+      v-on:contextmenu="openMenu('focusContext')"
       v-on:drop="log2"
     >
       <el-row style="width:100%;height:100vh">
@@ -21,14 +21,13 @@
             class="focusText"
             v-bind:style="focusStyle"
             v-model="sharedResult.result"
-            v-if="sharedResult && !sharedResult.dict"
+            v-if="sharedResult && !dictResult.valid"
           ></textarea>
-
-          <DictResult
-            v-if="sharedResult && sharedResult.dict"
-            ref="dictResult"
+          <DictResultPanel
+            v-if="dictResult.valid"
+            ref="dictResultPanel"
             :size="size"
-          ></DictResult>
+          ></DictResultPanel>
         </el-col>
       </el-row>
     </div>
@@ -38,89 +37,93 @@
       style="width:100%;"
       v-model="cmd"
     ></el-input>
-    <ControlButton></ControlButton>
+    <ControlButton :valid="dictResult.valid"></ControlButton>
   </div>
 </template>
 
-<script>
-import { desktopCapturer, screen, ipcRenderer } from "electron";
-import BaseView from "../components/BaseView";
-import WindowController from "../components/WindowController";
-import Adjustable from "../components/Adjustable";
-import DictResult from "../components/DictResult";
+<script lang="ts">
 import { shell } from "electron";
-import { RuleName } from "@/tools/rule";
-import ControlButton from "../components/ControlButton";
+import BaseView from "../components/BaseView.vue";
+import WindowController from "../components/WindowController.vue";
+import DictResultPanel from "../components/DictResult.vue";
+import ControlButton from "../components/ControlButton.vue";
+import { Mixins, Ref, Component } from "vue-property-decorator";
+import { Identifier, RouteActionType } from "../tools/types";
 
-export default {
-  name: "FocusMode",
-  mixins: [BaseView, WindowController, Adjustable],
-  components: { DictResult, ControlButton },
-  data: function() {
+@Component({
+  components: {
+    DictResultPanel,
+    ControlButton
+  }
+})
+export default class FocusMode extends Mixins(BaseView, WindowController) {
+  routeName: RouteActionType = "focus";
+  cmd: string = "";
+  activeEngines: any[] = ["Baidu"];
+  isOpen: boolean = false;
+  @Ref("dictResultPanel") readonly dictResultPanel!: DictResultPanel;
+
+  mounted() {
+    this.$proxy.get("focus").then(res => {
+      this.size = res.fontSize;
+    });
+  }
+  toggleCmdline() {
+    this.isOpen = !this.isOpen;
+  }
+
+  log2(event: any) {
+    console.log(event.dataTransfer.getData("text/plain"));
+  }
+  exectueCmd() {
+    this.callback(this.cmd);
+  }
+  capture() {
+    this.$proxy.capture();
+  }
+  get focusStyle() {
     return {
-      size: this.$controller.get(RuleName.focus).fontSize,
-      routeName: "focus",
-      cmd: "",
-      activeEngines: ["baidu"],
-      isOpen: false
+      fontSize: this.size.toString() + "px",
+      width: "100%",
+      height: "100vh"
     };
-  },
-  methods: {
-    toggleCmdline() {
-      this.isOpen = !this.isOpen;
-    },
-    log2(event) {
-      console.log(event.dataTransfer.getData("text/plain"));
-    },
-    exectueCmd() {
-      console.log(this.cmd);
-      this.callback(this.cmd);
-    },
-    shortcut() {
-      const text = this.getModifiedText();
-      const arg = {
-        src: "",
-        result: "",
-        source: "",
-        target: "",
-        dict: undefined,
-        phonetic: undefined,
-        notify: false
-      };
-      this.$store.commit("setShared", arg);
-      this.$controller.tryTranslate(text);
-    },
-    getModifiedText() {
-      if (this.sharedResult && !this.sharedResult.dict) {
-        return this.sharedResult.result;
-      } else {
-        return this.$refs.dictResult.$el.innerText;
-      }
-    },
-    capture() {
-      this.$controller.capture();
-    },
-    baidu() {
-      shell.openExternal(
-        `https://www.baidu.com/s?ie=utf-8&wd=${this.getModifiedText()}`
-      );
-    },
-    google() {
-      shell.openExternal(
-        `https://www.google.com/search?q=${this.getModifiedText()}`
-      );
-    }
-  },
-  computed: {
-    focusStyle() {
-      return {
-        fontSize: this.size.toString() + "px",
-        width: "100%",
-        height: "100vh"
-      };
+  }
+  getModifiedText() {
+    if (this.sharedResult && !this.dictResult.valid) {
+      return this.sharedResult.result;
+    } else {
+      //@ts-ignore
+      return (this.dictResultPanel[0].$el as any).innerText;
     }
   }
-};
+  baidu() {
+    shell.openExternal(
+      `https://www.baidu.com/s?ie=utf-8&wd=${this.getModifiedText()}`
+    );
+  }
+
+  google() {
+    shell.openExternal(
+      `https://www.google.com/search?q=${this.getModifiedText()}`
+    );
+  }
+  shortcut() {
+    const text = this.getModifiedText();
+    const arg = {
+      src: "",
+      result: "",
+      source: "",
+      target: "",
+      engine: "",
+      notify: false
+    };
+    this.$store.commit("setShared", arg);
+    this.$store.commit("setDictResult", {
+      valid: false
+    });
+    this.$proxy.tryTranslate(text, true);
+  }
+}
 </script>
 
 <style scoped></style>

@@ -19,10 +19,12 @@ import {
 import "normalize.css/normalize.css";
 import "../theme/index.css";
 import App from "./App.vue";
-import { constants, version } from "./core/constant";
+import { constants, versionString } from "./core/constant";
+import { IProxy } from "./core/iproxy";
+import { createService } from "./tools/create";
+import { authorizeKey } from "./tools/types";
 
-const remote = require("electron").remote;
-const controller = remote.getGlobal("controller");
+const proxy = createService<IProxy>(authorizeKey);
 
 Vue.use(Button);
 Vue.use(Select);
@@ -35,9 +37,11 @@ Vue.use(TabPane);
 Vue.use(Option);
 Vue.use(Input);
 
+const remote = require("electron").remote;
+const controller = remote.getGlobal("controller");
+
 Vue.prototype.$t = controller.getT();
-Vue.prototype.$log = remote.getGlobal("log");
-Vue.prototype.$controller = controller;
+Vue.prototype.$proxy = proxy;
 
 new Vue({
   router,
@@ -50,19 +54,21 @@ new Vue({
       (event: any, arg: any) => {
         store.commit("setShared", arg);
         if (arg.notify && arg.result.length > 0) {
-          new Notification(constants.appName + " " + version, {
+          new Notification(constants.appName + " " + versionString, {
             body: arg.result
           });
         }
       }
     );
+    ipcRenderer.on(
+      MessageType.DictResult.toString(),
+      (event: any, arg: any) => {
+        store.commit("setDictResult", arg);
+      }
+    );
     ipcRenderer.on(MessageType.UpdateT.toString(), (event: any, arg: any) => {
       Vue.prototype.$t = controller.getT();
     });
-
-    if (controller.res) controller.sync();
-    else {
-      controller.checkClipboard();
-    }
+    proxy.checkSync();
   }
 }).$mount("#app");

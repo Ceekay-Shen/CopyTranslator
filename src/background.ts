@@ -1,9 +1,7 @@
 "use strict";
-import { app, protocol, Notification } from "electron";
+import { app, protocol } from "electron";
 import { installVueDevtools } from "vue-cli-plugin-electron-builder/lib";
-import { log } from "./tools/logger";
 import { Controller } from "./core/controller";
-import { EventEmitter } from "events";
 import { recognizer } from "./tools/ocr";
 const isDevelopment = process.env.NODE_ENV !== "production";
 import ShortcutCapture from "shortcut-capture";
@@ -14,7 +12,9 @@ let controller = new Controller();
 (<any>global).controller = controller;
 
 // Standard scheme must be registered before the app is ready
-protocol.registerStandardSchemes(["app"], { secure: true });
+protocol.registerSchemesAsPrivileged([
+  { scheme: "app", privileges: { standard: true, secure: true } }
+]);
 
 // Quit when all windows are closed.
 app.on("window-all-closed", () => {

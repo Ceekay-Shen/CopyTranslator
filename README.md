@@ -4,6 +4,7 @@
 
 [中文 Chinese](README_zh.md)
 
+[![OpenTranslate](https://img.shields.io/badge/Powered_by-OpenTranslate-brightgreen)](https://github.com/OpenTranslate)
 [![](https://img.shields.io/github/stars/copytranslator/copytranslator.svg)](https://github.com/copytranslator/copytranslator/stargazers)
 [![](https://img.shields.io/github/release/copytranslator/copytranslator.svg)](https://github.com/copytranslator/copytranslator/releases)
 [![](https://img.shields.io/gitter/room/copytranslator/copytranslator.svg)](https://gitter.im/CopyTranslator/Lobby?utm_source=share-link&utm_medium=link&utm_campaign=share-link)
@@ -60,11 +61,6 @@ More efficient, while keeping the original segment as much as possible.
 
 ![entoch](./assets/entoch.png)
 
-### Tap to Copy(Experimental)
-
-After turning on the `listen Clipboard` option, just select the text, and hover the mouse over the selected text to release the mouse over 0.3s. That is, **after long press and  release, it can be copied.** This can prevent us from over moving the mouse (right click to choose Copy) or tired of  pressing `Ctrl+C`.
-
-![longpresscopy](./assets/longpresscopy.gif)
 
 ### Powerful Focus Mode
 
@@ -126,7 +122,6 @@ This software is free open source software, the developer is [Elliott Zheng](htt
 - [Software official website](https://copytranslator.github.io/) 
 - [Project homepage on Github ](https://github.com/copytranslator/CopyTranslator) 
 - [Project homepage on Gitee](https://gitee.com/ylzheng/CopyTranslator) 
-- [Offical Blogs](https://www.cnblogs.com/elliottzheng/p/9060159.html) 
 - [Official Email](mailto:copytranslator@hypercube.top)
 
 ## Acknowledgements

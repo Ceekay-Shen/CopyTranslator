@@ -4,7 +4,7 @@
       <div style="text-align: left;">
         <Action
           v-for="actionId in actionKeys"
-          :action-id="actionId"
+          :identifier="actionId"
           :key="actionId"
         ></Action>
       </div>
@@ -12,26 +12,26 @@
   </div>
 </template>
 
-<script>
-import WindowController from "../components/WindowController";
-import Action from "../components/Action";
+<script lang="ts">
+import WindowController from "../components/WindowController.vue";
+import Action from "../components/Action.vue";
+import Component from "vue-class-component";
+import { Identifier } from "../tools/types";
 
-export default {
-  name: "Switches",
-  mixins: [WindowController],
-  data: function() {
-    return {
-      config: undefined,
-      locale: undefined,
-      locales: this.$controller.locales.getLocales(),
-      actionKeys: this.$controller.action.getKeys("Switches")
-    };
-  },
+@Component({
   components: {
     Action
-  },
-  methods: {}
-};
+  }
+})
+export default class Switches extends WindowController {
+  actionKeys: Identifier[] = [];
+
+  mounted() {
+    this.$proxy.getKeys("switches").then((keys: Identifier[]) => {
+      this.actionKeys = keys;
+    });
+  }
+}
 </script>
 
 <style scoped></style>

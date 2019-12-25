@@ -1,11 +1,8 @@
 import { dialog, BrowserWindow, screen, nativeImage, ipcMain } from "electron";
 import { autoUpdater } from "electron-updater";
-import { Controller } from "../../core/controller";
-import { envConfig } from "../envConfig";
+import { env } from "../env";
 import { checkUpdate } from "../checker";
 import { loadRoute, insertStyles } from "./index";
-import { RouteName } from "../action";
-
 let window: BrowserWindow | undefined = undefined;
 let binded: boolean = false;
 autoUpdater.autoDownload = false;
@@ -17,7 +14,7 @@ function bindUpdateEvents() {
   autoUpdater.on("update-available", updateInfo => {
     const width = 500,
       height = 500;
-    const current_win = (<Controller>(<any>global).controller).win;
+    const current_win = global.controller.win;
     const bound = current_win.getBound();
     const {
       x: xBound,
@@ -35,9 +32,12 @@ function bindUpdateEvents() {
       minimizable: false,
       title: "软件更新",
       parent: current_win.window,
-      icon: nativeImage.createFromPath(envConfig.iconPath)
+      icon: nativeImage.createFromPath(env.iconPath),
+      webPreferences: {
+        nodeIntegration: true
+      }
     });
-    loadRoute(window, RouteName.Update);
+    loadRoute(window, "update");
     insertStyles(window);
     window.webContents.on("did-finish-load", function() {
       (<BrowserWindow>window).webContents.send("releaseNote", updateInfo);
@@ -45,24 +45,24 @@ function bindUpdateEvents() {
   });
 
   autoUpdater.on("update-downloaded", () => {
-    dialog.showMessageBox(
-      {
+    dialog
+      .showMessageBox({
         type: "info",
         title: "安装更新",
-        icon: nativeImage.createFromPath(envConfig.iconPath),
+        icon: nativeImage.createFromPath(env.iconPath),
         message: "更新已下载",
         buttons: ["现在退出并安装", "退出后自动安装", "cancel"],
         cancelId: 2
-      },
-      (response, checkboxChecked) => {
+      })
+      .then(res => res.response)
+      .then(response => {
         if (response == 0) {
           setImmediate(() => autoUpdater.quitAndInstall());
         }
         if (response == 1) {
           autoUpdater.autoInstallOnAppQuit = true;
         }
-      }
-    );
+      });
   });
 
   ipcMain.on("confirm-update", (event: any, args: any) => {

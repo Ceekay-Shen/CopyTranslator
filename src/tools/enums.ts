@@ -1,21 +1,20 @@
-enum FrameMode {
-  Contrast,
-  Focus
-}
+export const hideDirections = [
+  "Up",
+  "Right",
+  "Left",
+  "None",
+  "Minify"
+] as const;
+export type HideDirection = typeof hideDirections[number];
 
-enum HideDirection {
-  Up,
-  Right,
-  Left,
-  None,
-  Minify
-}
 enum MessageType {
   WindowOpt,
   TranslateResult,
+  DictResult,
   OpenMenu,
   Router,
-  UpdateT
+  UpdateT,
+  FirstLoaded
 }
 
 enum WinOpt {
@@ -58,9 +57,6 @@ const ColorStatus = mkenum({
   Fail: rgb(255, 0, 0)
 });
 
-type ColorStatus = (typeof ColorStatus)[keyof typeof ColorStatus];
+type ColorStatus = typeof ColorStatus[keyof typeof ColorStatus];
 
-//下面开始设计各个菜单的内容
-const switchKeys = [];
-
-export { FrameMode, ColorStatus, MessageType, WinOpt, HideDirection };
+export { ColorStatus, MessageType, WinOpt };
